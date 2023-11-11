@@ -32,8 +32,8 @@ public class FileController {
         return fileService.uploadFile(file, fileHash, fileName, createdBy);
     }
 
-    @GetMapping(path = "/download/{file_id}")
-    public @ResponseBody ResponseEntity<FileModel> downloadFile(@PathVariable String file_id){
+    @GetMapping(path = "/download/{file_id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public @ResponseBody ResponseEntity<FileModel> downloadFile(@PathVariable String file_id) {
         return fileService.downloadFile(file_id);
     }
 }

@@ -1,5 +1,6 @@
 package com.tf.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.annotation.Nonnull;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -18,6 +19,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @RequiredArgsConstructor
 @Data
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class FileModel {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

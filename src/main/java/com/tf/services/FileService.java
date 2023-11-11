@@ -40,8 +40,8 @@ public class FileService {
 
     public ResponseEntity<FileModel> downloadFile(String fileId) {
         UUID uuid = UUID.fromString(fileId);
-        FileModel referenceById = fileRepository.getReferenceById(uuid);
-        return new ResponseEntity<>(referenceById, HttpStatus.OK);
+        FileModel savedFile = fileRepository.getReferenceById(uuid);
+        return new ResponseEntity<>(savedFile, HttpStatus.CREATED);
     }
 
 }
