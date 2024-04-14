@@ -1,0 +1,24 @@
+<configuration>
+    <Properties>
+        <Property name="LOG_LEVEL_PATTERN">%highlight{[%d][%level][X-Request-Id: %X{requestId}][%thread][%C:%L] - %msg%n}{FATAL=red, ERROR=red, WARN=yellow, INFO=green, DEBUG=cyan, TRACE=blue}
+        </Property>
+    </Properties>
+    <appenders>
+        <Console name="stdout" target="SYSTEM_OUT">
+            <PatternLayout pattern="${LOG_LEVEL_PATTERN}" disableAnsi="false"/>
+        </Console>
+
+        <File name="application.log" fileName="logs\application.log"
+              append="true">
+            <PatternLayout
+                    pattern="[%d][%level][X-Request-Id: %X{requestId}][%thread][%C:%L] - %msg%n"/>
+        </File>
+    </appenders>
+    <loggers>
+        <root level="info">
+            <appender-ref ref="stdout"/>
+            <appender-ref ref="application.log"/>
+        </root>
+    </loggers>
+</configuration>
+

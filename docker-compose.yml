@@ -1,0 +1,30 @@
+version: "3"
+services:
+  file-storage-db:
+    container_name: file-storage-db
+    image: "mysql:8"
+    ports:
+      - 3306:3306
+    environment:
+      - MYSQL_DATABASE=file_storage
+      - MYSQL_USER=sa
+      - MYSQL_PASSWORD=password
+      - MYSQL_ROOT_PASSWORD=password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 20s
+      retries: 10
+  file-storage-server:
+    container_name: file-storage-server
+    image: file-storage-server
+    build: .
+    ports:
+      - 8080:8080
+    depends_on:
+      file-storage-db:
+        condition: service_healthy
+    volumes:
+      - ${PWD}/data:/data
+    environment:
+      - instanceUrl=https://${CODESPACE_NAME}-8080.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}
