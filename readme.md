@@ -1,134 +1,126 @@
-# File Storage API Documentation
-This document provides an overview of the file storage API along with instructions to run the application locally and test the functionalities.
+# Drop Box Equivalent Storage Service (Backend)
+## 1. Overview
+This project aims to develop a backend service that replicates the functionalities of Dropbox, a cloud storage platform. Currently, this implementation only focuses on the backend aspects of such a service, providing features like user authentication, file upload/download/update/deletion, and a comprehensive database design for managing user and file metadata.
+### Key features:
+- User Authentication and Authorization
+- File Upload/Download/Update/Delete operations
+- Efficient File Chunking for Large Files
+- Comprehensive Database Design
+- Dockerized Deployment for Easy Setup
+- Custom Exception Handling and Rate Limiting
+- Integration with Swagger UI for API Testing
 
-# Running the application
-1. Fork this repo, 
-2. Create a github codespace for this repository on master branch, it may take few mins for the first time.
-3. Upon, navigating to VS code editor, open the TERMINAL tab in the bottom panel.
-    1. Compile the app by running `mvn clean install` (This may take couple of mins).
-    2. Bring both mysql and app live with `docker compose up` (This may take couple of mins, tries to bring up mysql post that boots up app wait till you see log with message "Picked storage.path as ./data").
-4. Navigate to PORTS section in the bottom panel where you can find the local address for the server running on port 
-       8080, do a ctrl or cmd click on it, post opening of the link in new browser window navigate to swagger-ui by appending `/swagger-ui.html` to the url
-5. Enjoy testing the api's from the swagger-ui.
----
-# Testing the application
+## 2. Installation Steps
+### Requirements:
+- Java 11 or higher
+- Maven
+- Docker
 
-1. User Management:
-   - Use the "Sign Up" operation to create a new user with a username and password (remember these credentials).
-   - Perform a "Login" operation using the created username and password to obtain a JWT token for authentication.
-2. API Interaction:
-   - Locate the "Authorize" button on the top right corner of the Swagger UI, next to the server URL.
-   - Click on "Authorize" and paste the obtained JWT token from the login step. Click "Close" after authorization.
-3. File Upload:
-   - Navigate to the "Upload a file" operation.
-   - Select a file to upload and provide an optional new name in the "name" field.
-   - Click "Execute" to upload the file. Upon successful upload, you'll receive a FileId.
-4. List Files:
-   - Go to the "Get all files" section.
-   - Click the "Execute" button to retrieve a list of all uploaded files.
-5. Download File:
-   - Navigate to the "Download file" operation.
-   - Enter the FileId of a previously uploaded file.
-   - Click "Execute" to download the selected file.
-6. Update File:
-   - Go to the "Update file" operation.
-   - Select a new file to upload.
-   - Optionally, provide the old file name in the "name" field to retain it. Otherwise, the API will use the uploaded 
-     file's name.
-   - Click "Execute" to update the file.
-7. Delete File:
-   - Navigate to the "Delete file" operation.
-   - Enter the FileId of the file you want to delete.
-   - Click "Execute" to delete the file.
+### Instructions:
 
----
-# API Documentation
-   * [FileController](apiDocumentation/fileController.md)
-   * [AuthController](apiDocumentation/authController.md)
----
-# Database Design
+1. **Fork this Repository:** Clone this repository onto your local machine using the git clone command.
+2. **Create a Codespace:** Go to the GitHub Codespaces website and create a new codespace for your forked repository. This may take a few minutes to initialize.
+3. **Compile and Build:** Once your Codespace is ready, open a terminal window and run the following commands:
+- `mvn clean install`: This compiles and builds the project.
+- `docker compose up`: This brings up both the MySQL database and the application server in separate Docker containers.
+  Please be patient as it may take several minutes for everything to start up.
+4. **Access the APIs:** Once the setup is complete, the API will be available on port 8080.
+5. **Swagger UI:** Navigate to /swagger-ui.html after the port 8080 address to access a user interface for testing and
+   exploring the APIs.
 
-## [User.java](src%2Fmain%2Fjava%2Fcom%2Ftf%2Fmodels%2FUser.java)
 
-| Column Name | Data Type | Description                                      |
-|-------------| --- |--------------------------------------------------|
-| id          | long | Unique identifier for each user (auto-generated) |
-| username    | varchar | Username of the user                             |
-| password    | varchar | Password hash of the user                        |
-|roles        | varchar | Roles of the user                                |
+## 3. High-Level Design
+The application utilizes a Spring Boot framework with RESTful API endpoints for file upload/download operations and user authentication.
 
-Here's the representation of the table design for the `UserModel` class:
+### Architecture:
+- API Gateway (not included in this implementation): Routes incoming API requests to the appropriate backend service
+- Backend Service (implemented): Handles user authentication, file management, storage operations, and database
+  interactions
 
-| id | username | password      | roles |
-|----|----------|---------------|-------|
-| 1  | user1    | password1Hash | USER  |
-| 2  | user2    | password2Hash | USER  |
+### Components:
 
-## [FileMetadataModel.java](src%2Fmain%2Fjava%2Fcom%2Ftf%2Fmodels%2FFileMetadataModel.java)
+- **AuthController:** Manages user registration and login functionalities using JWT tokens for authentication
+- **FileController:** Facilitates upload, download, update, and deletion operations for files stored in the system
+- **Database Layer:** Manages the storage and retrieval of user and file metadata using MySQL database
 
-| Column Name | Data Type | Description |
-|-------------| --- | --- |
-| id          | long | Unique identifier for each file (auto-generated) |
-| name        | varchar | Name of the file |
-| size        | long | Size of the file in bytes |
-| createdAt   | timestamp | Time of upload of the file |
-| updatedAt   | timestamp | Time of last modification of the file |
-| path        | varchar | Path of the file in the server |
-| userId      | long | Foreign key referencing the associated user |
-|type         | varchar | Type of the file |
-|fileHash     | varchar | Hash of the file |
-|isStoredInChunks | boolean | Whether the file is stored in chunks or not |
+**File Chunking (for Large Files):** Large files are split into smaller chunks for efficient storage, transmission, and
+access. This mechanism allows efficient handling of files that might exceed available memory or bandwidth limitations.
 
-Here's the representation of the table design for the `FileMetadataModel` class:
+## 4. APIs Overview
+This section provides a detailed description of the available API endpoints.
 
-| id | name | size | createdAt | updatedAt | path | userId | type | fileHash | isStoredInChunks |
-|----|------|------|-----------|-----------|------|--------|------|----------|------------------|
-| 1  | file1 | 1000 | 2021-10-10 10:10:10 | 2021-10-10 10:10:10 | /path/to/file1 | 1 | txt | 1234567890 | false |
-| 2  | file2 | 2000 | 2021-10-10 10:10:10 | 2021-10-10 10:10:10 | /path/to/file2 | 1 | txt | 1234567890 | false |
-| 3  | file3 | 3000 | 2021-10-10 10:10:10 | 2021-10-10 10:10:10 | /path/to/file3 | 1 | txt | 1234567890 | false |
+### Authentication
 
-## [FileChunkMetadata.java](src%2Fmain%2Fjava%2Fcom%2Ftf%2Fmodels%2FFileChunkMetadata.java)
+#### Signup
+##### api/v1/auth/signup [POST]
+This POST request registers a new user by accepting username and password in the JSON request body.
 
-| Column Name | Data Type | Description |
-|-------------| --- | --- |
-| id          | long | Unique identifier for each file chunk (auto-generated) |
-|sequence_number | int | Sequence number of the chunk |
-|fileId       | long | Foreign key referencing the associated file |
-|path         | varchar | Path of the file chunk in the server |
-|size         | long | Size of the file chunk in bytes |
+#### login
+##### api/v1/auth/login [POST]
+This POST request authenticates an existing user using username and password credentials in the JSON request body and returns a JWT token upon successful login.
 
-Here's the representation of the table design for the `FileChunkMetadata` class:
+### File Operations
 
-| id | sequence_number | fileId | path | size |
-|----|-----------------|--------|------|------|
-| 1  | 1               | 1      | /path/to/file1_chunk1 | 1000 |
-| 2  | 2               | 1      | /path/to/file1_chunk2 | 1000 |
-| 3  | 1               | 2      | /path/to/file2_chunk1 | 1000 |
+#### upload
+##### api/v1/files [POST]
+This POST request uploads a file by accepting the file itself in multipart/form-data along with metadata like file
+name, hash. If new file has same
+name as existing file, this file will be stored with the same name appended with a number.
 
----
+#### download
+##### api/v1/files/{id} [GET]
+This GET request retrieves a specific file using the file ID and provides access through a download link.
+- This endpoint also supports partial downloads via the Range header for improved efficiency in large file scenarios.
 
-# General things considered during development
-## Functional
-1. **Security**: JWT based authentication is used to secure the API's. (This ensures only authorized users can access the API)
-2. **File User Association**: File is associated with the user who uploaded it. (This allows tracking ownership of uploaded files)
-3. **Error Handling**: Custom exception handling is done to provide meaningful error messages. (This improves user experience by providing clear error details)
-5. **API Documentation**: Swagger is used for API documentation. (This allows developers to easily understand and integrate with the API)
-6. **Database**: MySQL is used as the database. (This specifies the data storage technology)
-7. **File Upload**: File upload is done using MultipartFile based on the value passed in application.properties file. (This defines the method for uploading files)
-8. **File Storage**: Files are stored in the local file system. (This specifies the location where uploaded files are kept)
-10. **File Update**: File update is done by uploading a new file and deleting the old file. (This defines the logic for updating files)
-11. **File Delete**: File delete is done by deleting the file from the file system and file metadata from the database. (This defines the logic for deleting files)
-19. **Byte Range Request**: Single/Multi Byte range request is supported for file download. (This allows for efficient downloading of large files in parts)
+#### update
+##### api/v1/files/{id} [PUT]
+This PUT request allows updating the content of an existing file using the provided file ID.
 
-## Non-Functional
-12. **File Chunking**: File chunking is done to store large files. (This improves performance for large file uploads)
-13. **File Metadata**: File metadata is stored in the database. (This defines additional information stored about the file)
-14. **File Chunk Metadata**: File chunk metadata is stored in the database. (This is specific to the chunking implementation)
-15. **File Hashing**: File hashing is done to verify the integrity of the file. (This ensures data hasn't been corrupted during upload/download)
-16. **Logging execution time**: Execution time of the API's is logged. (This helps monitor API performance)
-17. **Rate Limiting**: Rate limiting is done using Guava RateLimiter. (This prevents abuse by limiting API requests per user/client)
-18. **Request Id**: Request Id is generated for each request and passed in the response header. (This helps with troubleshooting and tracking requests)
-20. **One command to run**: `docker compose up` to bring up the application and database. (This simplifies deployment)
-21. **Easy to test**: Swagger UI is used for API testing. (This improves development workflow)
-22. **File Upload Size**: File upload size is limited to 10MB. (This defines a restriction on file size for upload)
-23. **File Download Size**: File download size is limited to 10MB. (This defines a restriction on file size for download)
+#### delete
+##### api/v1/files/{id} [DELETE]
+This PUT request deletes a specific file using the provided file ID and removes associated file information from the database.
+
+#### fetch_all_files
+##### api/v1/files [GET]
+This PUT request fetches metadata information of all files accessible to a particular user.
+
+## 5. Database Design
+The project utilizes three main entities in its database schema:
+
+### User Entity:
+- **Table:** User
+- **Fields:** id (unique identifier), username, password, roles
+
+### File Metadata Entity:
+- **Table:** FileMetadataModel
+- **Fields:** id (unique identifier), name, size, createdAt, updatedAt, path, userId, isStoredInChunks
+
+### File Chunk Entity:
+- **Table:** FileChunkMetadata
+- **Fields:** id (unique identifier), sequenceNumber, fileId, path, size
+
+## 6. Additional Functionalities
+- **Security:**
+   - User access is restricted to their own files, ensuring data security and privacy.
+- **Error Handling:**
+   - Custom exception classes and handlers provide informative error messages with relevant details and status codes for easier debugging and handling.
+- **Performance:**
+   - Efficient chunked data processing optimizes performance for both small and large file handling.
+   - Dockerization enables fast environment setup, portability, and scalability.
+- **Testing:**
+   - Integration with Swagger UI provides a convenient interface for testing APIs.
+- **Rate Limiting:**
+   - Rate limiting is implemented to prevent abuse and ensure fair usage of the service.
+
+
+## 7. Future Enhancements
+The current implementation focuses primarily on core backend functionalities and data storage. Potential improvements and additions could involve:
+
+- Frontend Development: Implementing a user-friendly interface for interacting with the API and managing file uploads, downloads, etc.
+- Additional Storage Options: Exploring integration with external cloud storage solutions for increased capacity and scalability.
+- File Versioning: Enabling the storage of multiple versions of a file for better history tracking and recovery options.
+- Advanced Search Features: Adding functionality to search files based on keywords, metadata fields, etc., for improved organization and accessibility.
+- User Management Enhancements: Implementing features for role-based access control, password resets, and other user-centric functionalities.
+
+## Conclusion
+This backend project serves as a solid foundation for building a robust cloud-based file storage service with functionalities similar to Drop Box. It offers comprehensive database design, secure user access controls, efficient chunked storage, and well-documented APIs, paving the way for further enhancements and customized implementations to cater to specific needs and preferences
