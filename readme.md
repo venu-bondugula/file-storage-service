@@ -9,6 +9,7 @@ This project aims to develop a backend service that replicates the functionaliti
 - Dockerized Deployment for Easy Setup
 - Custom Exception Handling and Rate Limiting
 - Integration with Swagger UI for API Testing
+- Supports the spec of byte range requests for partial downloads
 
 ## 2. Installation Steps
 ### Requirements:
@@ -18,7 +19,7 @@ This project aims to develop a backend service that replicates the functionaliti
 
 ### Instructions:
 
-1. **Fork this Repository:** Clone this repository onto your local machine using the git clone command.
+1. **Fork this Repository:** Click the "Fork" button in the top right corner of this repository to create your copy.
 2. **Create a Codespace:** Go to the GitHub Codespaces website and create a new codespace for your forked repository. This may take a few minutes to initialize.
 3. **Compile and Build:** Once your Codespace is ready, open a terminal window and run the following commands:
 - `mvn clean install`: This compiles and builds the project.
@@ -33,7 +34,6 @@ This project aims to develop a backend service that replicates the functionaliti
 The application utilizes a Spring Boot framework with RESTful API endpoints for file upload/download operations and user authentication.
 
 ### Architecture:
-- API Gateway (not included in this implementation): Routes incoming API requests to the appropriate backend service
 - Backend Service (implemented): Handles user authentication, file management, storage operations, and database
   interactions
 
