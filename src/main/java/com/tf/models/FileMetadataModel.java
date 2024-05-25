@@ -9,17 +9,17 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity(name = "file_metadata")
-//@AllArgsConstructor
 @NoArgsConstructor
 @Data
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class FileMetadataModel {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID fileId;
+    private UUID file_id;
 
     @Column(unique = true, nullable = false)
     private String fileName;
@@ -42,9 +42,8 @@ public class FileMetadataModel {
     @Nonnull
     private String fileHash;
 
-    @ManyToOne
-    @JoinColumn(name = "userId", nullable = false)
-    private User user;
+    @OneToMany(mappedBy = "fileMetadataModel")
+    private Set<UserAccess> userAccessSet;
 
     public FileMetadataModel(@Nonnull String fileName, @Nonnull String fileHash, long size, String type) {
         this.fileName = fileName;

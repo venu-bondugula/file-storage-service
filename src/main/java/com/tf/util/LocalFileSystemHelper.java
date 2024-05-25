@@ -17,10 +17,7 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @Component
 public class LocalFileSystemHelper {
@@ -44,7 +41,7 @@ public class LocalFileSystemHelper {
         }
         List<FileChunkMetadata> fileChunkMetadataList = new ArrayList<>();
         try (InputStream inputStream = file.getInputStream()) {
-            fileName = payload.getFileId() + "-" + fileName;
+            fileName = payload.getFile_id() + "-" + fileName;
             for (int i = 0; i < chunkCount; i++) {
                 byte[] chunkData = new byte[(int) chunkSize];
                 int bytesRead = Math.max(inputStream.read(chunkData), 0);
@@ -135,6 +132,39 @@ public class LocalFileSystemHelper {
         }
 
         return buffer.array();
+    }
+
+    public void saveFileChunk(MultipartFile file, String fileId, int chunkNumber) {
+        String filePath = uploadDir + "/temp" + "/" + fileId + "/" + chunkNumber;
+        try (InputStream inputStream = file.getInputStream()) {
+            byte[] chunkData = inputStream.readAllBytes();
+            FileUtils.writeByteArrayToFile(new File(filePath), chunkData);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
+    public void collateChunksAndSaveAsFile(String fileId, String fileName, String fileHash) {
+        String filePath = uploadDir + "/temp" + "/" + fileId;
+
+        File fileLocation = new File(filePath);
+        File[] files = fileLocation.listFiles();
+
+        if (files == null) {
+            return;
+        }
+
+        Arrays.sort(files, Comparator.comparing(file -> Integer.parseInt(file.getName())));
+        File fullFile = new File("/complete/" + fileName);
+        for (File file : files) {
+            try {
+                FileUtils.writeByteArrayToFile(fullFile, FileUtils.readFileToByteArray(file), true);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+
+            }
+        }
     }
 
 }

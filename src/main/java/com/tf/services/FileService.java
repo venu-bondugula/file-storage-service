@@ -4,11 +4,11 @@ import com.tf.exception.CustomException;
 import com.tf.exception.InvalidInputException;
 import com.tf.exception.UnAuthorizedException;
 import com.tf.exception.UploadFailedException;
-import com.tf.models.FileChunkMetadata;
-import com.tf.models.FileMetadataModel;
-import com.tf.models.User;
+import com.tf.models.*;
 import com.tf.repositories.FileChunkMetadataRepository;
 import com.tf.repositories.FileMetaDataRepository;
+import com.tf.repositories.UserAccessRepository;
+import com.tf.repositories.UserRepository;
 import com.tf.util.InputHelper;
 import com.tf.util.LocalFileSystemHelper;
 import jakarta.persistence.EntityNotFoundException;
@@ -23,9 +23,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 
 @Service
@@ -34,6 +32,8 @@ public class FileService {
     private final FileMetaDataRepository fileMetaDataRepository;
     private final FileChunkMetadataRepository fileChunkMetadataRepository;
     private final LocalFileSystemHelper localFileSystemHelper;
+    private final UserAccessRepository userAccessRepository;
+    private final UserRepository userRepository;
 
     public ResponseEntity<FileMetadataModel> uploadFile(MultipartFile file, String fileName, String fileHash, Authentication authentication) {
         User user = getUser(authentication);
@@ -41,17 +41,22 @@ public class FileService {
         fileName = payload.getFileName();
         String baseName = FilenameUtils.getBaseName(fileName);
         String extension = FilenameUtils.getExtension(fileName);
-        List<String> fileNamesStartingWithFileName =
-                fileMetaDataRepository.findFileNamesStartingWithFileName(baseName, user);
+        List<String> fileNamesStartingWithFileName = userAccessRepository.findAllFilesWithSimilarNameAccessibleByUser(baseName, user);
         fileName = localFileSystemHelper.getNextAvailableFileNameIfAAlreadyExists(fileNamesStartingWithFileName,
                 baseName, extension);
 
         payload.setFileName(fileName);
         payload.setSize(file.getSize());
         payload.setType(file.getContentType());
-        payload.setUser(user);
         payload.setStoredInChunks(true);
         payload = fileMetaDataRepository.save(payload);
+
+        UserAccess userAccess = UserAccess.builder()
+                .user(user)
+                .fileMetadataModel(payload)
+                .privilege(UserAccess.Privilege.OWNER)
+                .build();
+        userAccessRepository.save(userAccess);
 
         List<FileChunkMetadata> fileChunkMetadataList = localFileSystemHelper.storeFile(file, fileName, payload);
         fileChunkMetadataRepository.saveAll(fileChunkMetadataList);
@@ -61,7 +66,7 @@ public class FileService {
 
     public ResponseEntity<ByteArrayResource> downloadFile(String fileId, HttpHeaders headers,
                                                           Authentication authentication) {
-        FileMetadataModel metadata = checkUserAccessAndGetMetadata(fileId, authentication);
+        FileMetadataModel metadata = checkUserAccessAndGetMetadata(fileId, authentication, UserAccess.Privilege.READER);
         List<FileChunkMetadata> chunkInfoList = getFileChunkMetadata(fileId);
 
         long fileSize = metadata.getSize();
@@ -125,10 +130,10 @@ public class FileService {
             throw new InvalidInputException("FileHash cannot not be updated without updating file");
         }
 
-        FileMetadataModel metadata = checkUserAccessAndGetMetadata(fileId, authentication);
+        FileMetadataModel metadata = checkUserAccessAndGetMetadata(fileId, authentication, UserAccess.Privilege.EDITOR);
         fileName = InputHelper.validateFileName(file, fileName);
-        if (!metadata.getFileName().equals(fileName)
-                && fileMetaDataRepository.existsByFileNameAndUser(fileName, metadata.getUser())) {
+        List<String> allFilesWithExactNameAccessibleByUser = userAccessRepository.findAllFilesWithExactNameAccessibleByUser(fileName, getUser(authentication));
+        if (!metadata.getFileName().equals(fileName) && !allFilesWithExactNameAccessibleByUser.isEmpty()) {
             throw new UploadFailedException("File with the same name already exists");
         }
 
@@ -160,19 +165,20 @@ public class FileService {
     }
 
     public ResponseEntity<Object> deleteFile(String fileId, Authentication authentication) {
-        FileMetadataModel metadata = checkUserAccessAndGetMetadata(fileId, authentication);
+        FileMetadataModel metadata = checkUserAccessAndGetMetadata(fileId, authentication, UserAccess.Privilege.OWNER);
         List<FileChunkMetadata> fileChunkMetadataList = getFileChunkMetadata(fileId);
 
         localFileSystemHelper.deleteChunks(fileChunkMetadataList);
         fileChunkMetadataRepository.deleteAll(fileChunkMetadataList);
+        userAccessRepository.deleteAllByFileId(UUID.fromString(fileId));
         fileMetaDataRepository.delete(metadata);
 
         return ResponseEntity.noContent().build();
     }
 
     public ResponseEntity<List<FileMetadataModel>> listAllFiles(Authentication authentication) {
-        List<FileMetadataModel> allFiles =
-                fileMetaDataRepository.findAllByUserId(getUserId(authentication));
+        List<FileMetadataModel> allFiles = userAccessRepository.findAllFilesByUser(getUser(authentication));
+        //fileMetaDataRepository.findAllByUserId(getUserId(authentication));
         return new ResponseEntity<>(allFiles, HttpStatus.OK);
     }
 
@@ -184,12 +190,15 @@ public class FileService {
         return chunkInfoList;
     }
 
-    private FileMetadataModel checkUserAccessAndGetMetadata(String fileId, Authentication authentication) {
+    private FileMetadataModel checkUserAccessAndGetMetadata(String fileId, Authentication authentication,
+                                                            UserAccess.Privilege privilege) {
         FileMetadataModel metadata;
         try {
             UUID fileUUID = UUID.fromString(fileId);
             metadata = fileMetaDataRepository.getReferenceById(fileUUID);
-            if (!metadata.getUser().getId().equals(getUserId(authentication))) {
+            UserAccess userAccess = userAccessRepository.getUserAccessForTheFileToTheUser(fileUUID,
+                    getUserId(authentication), privilege);
+            if (userAccess == null) {
                 throw new UnAuthorizedException();
             }
         } catch (IllegalArgumentException e) {
@@ -206,12 +215,53 @@ public class FileService {
     }
 
     private Long getUserId(Authentication auth) {
-        return getUser(auth).getId();
+        return getUser(auth).getUser_id();
     }
 
     private static void setResponseHeaders(HttpHeaders responseHeaders, long startByte, long endByte, long fileSize, byte[] requestedData) {
         responseHeaders.set(HttpHeaders.CONTENT_RANGE, String.format("bytes %d-%d/%d", startByte, endByte, fileSize));
         responseHeaders.setContentLength(requestedData.length);
         responseHeaders.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+    }
+
+    public ResponseEntity<Map<String, String>> initFileUpload(Authentication authentication) {
+        HashMap<String, String> uniqueFileId = new HashMap<>();
+        uniqueFileId.put("file_id", UUID.randomUUID().toString());
+        return new ResponseEntity<>(uniqueFileId, HttpStatus.OK);
+    }
+
+    public ResponseEntity<Map<String, String>> uploadFileChunk(MultipartFile file, String fileHash, String fileId, int chunkNumber, Authentication authentication) {
+        localFileSystemHelper.saveFileChunk(file, fileId, chunkNumber);
+        return null;
+    }
+
+    public ResponseEntity<Map<String, String>> finalizeFileChunkUpload(String fileId, String fileName, String fileHash) {
+        localFileSystemHelper.collateChunksAndSaveAsFile(fileId, fileName, fileHash);
+        return null;
+    }
+
+    public ResponseEntity<FileMetadataModel> shareFile(String fileId, PermissionRequest request, Authentication authentication) {
+        FileMetadataModel fileMetadataModel = fileMetaDataRepository.findById(UUID.fromString(fileId)).orElse(null);
+        if (fileMetadataModel == null) {
+            throw new CustomException("No Such file exists");
+        }
+        UserAccess userAccess = userAccessRepository.getUserAccessForTheFileToTheUser(UUID.fromString(fileId),
+                getUserId(authentication), UserAccess.Privilege.OWNER);
+        if (userAccess == null) {
+            throw new UnAuthorizedException();
+        }
+
+        User user = userRepository.findById(request.getUserId()).orElse(null);
+        if (user == null) {
+            throw new CustomException("No Such user exists");
+        }
+
+        UserAccess userAccess1 = UserAccess.builder()
+                .privilege(UserAccess.Privilege.valueOf(request.getPrivilege()))
+                .user(user)
+                .fileMetadataModel(fileMetadataModel)
+                .build();
+        userAccessRepository.save(userAccess1);
+        return new ResponseEntity<>(HttpStatus.CREATED);
     }
 }

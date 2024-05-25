@@ -1,6 +1,7 @@
 package com.tf.controllers;
 
 import com.tf.models.FileMetadataModel;
+import com.tf.models.PermissionRequest;
 import com.tf.services.FileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("api/v1/files")
@@ -40,6 +42,29 @@ public class FileController {
                                                                       Authentication authentication
     ) {
         return fileService.uploadFile(file, fileName, fileHash, authentication);
+    }
+
+    @GetMapping(value = "/chunk/init", produces = MediaType.APPLICATION_JSON_VALUE)
+    public @ResponseBody ResponseEntity<Map<String, String>> initFileUpload(Authentication authentication) {
+        return fileService.initFileUpload(authentication);
+    }
+
+    @PostMapping(value = "/chunk/{unique_id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public @ResponseBody ResponseEntity<Map<String, String>> uploadFileChunk(@RequestPart MultipartFile file,
+                                                                             @RequestPart(required = false) String fileHash,
+                                                                             @PathVariable(value = "unique_id") String fileId,
+                                                                             @RequestParam(value = "chunk_number") int chunkNumber,
+                                                                             Authentication authentication
+    ) {
+        return fileService.uploadFileChunk(file, fileHash, fileId, chunkNumber, authentication);
+    }
+
+    @PostMapping(value = "chunk/{unique_id}/finalize", produces = MediaType.APPLICATION_JSON_VALUE)
+    public @ResponseBody ResponseEntity<Map<String, String>> finalizeFileChunkUpload(@PathVariable(value = "unique_id") String fileId,
+                                                                                     @RequestPart(required = false) String fileHash,
+                                                                                     @RequestPart(required = false) String fileName
+    ) {
+        return fileService.finalizeFileChunkUpload(fileId, fileName, fileHash);
     }
 
     @GetMapping(path = "/{file_id}", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
@@ -65,6 +90,19 @@ public class FileController {
                                                                       Authentication authentication
     ) {
         return fileService.updateFile(file_id, file, fileHash, fileName, authentication);
+    }
+
+    @PostMapping(path = "/{file_id}/permissions", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces =
+            MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Sharing File",
+            description = "Sharing an existing file in the server with another user.",
+            parameters = {@Parameter(name = "file_id", description = "The ID of the file to update", required = true, in = ParameterIn.PATH)},
+            responses = {@ApiResponse(responseCode = "200", description = "Success", content = @Content(schema = @Schema(implementation = FileMetadataModel.class), mediaType = MediaType.APPLICATION_JSON_VALUE))})
+    public @ResponseBody ResponseEntity<FileMetadataModel> shareFile(@PathVariable String file_id,
+                                                                     @RequestBody PermissionRequest request,
+                                                                      Authentication authentication
+    ) {
+        return fileService.shareFile(file_id, request, authentication);
     }
 
     @DeleteMapping(path = "/{file_id}", produces = MediaType.APPLICATION_JSON_VALUE)

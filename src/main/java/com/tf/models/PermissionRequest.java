@@ -4,10 +4,10 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+@Data
 @AllArgsConstructor
 @NoArgsConstructor
-@Data
-public class LoginRequest {
-    private String username;
-    private String password;
+public class PermissionRequest {
+    Long userId;
+    String privilege;
 }

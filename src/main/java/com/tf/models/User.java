@@ -2,15 +2,12 @@ package com.tf.models;
 
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+
+import java.util.Set;
 
 @Entity
 @Data
@@ -20,7 +17,8 @@ import lombok.ToString;
 public class User {
     @Id
     @GeneratedValue
-    private Long id;
+    @Column(name = "user_id")
+    private Long user_id;
 
     @Column(nullable = false, unique = true)
     private String username;
@@ -29,16 +27,15 @@ public class User {
     @Column(nullable = false)
     private String password;
 
-    @JsonIgnore
-    private String roles;
+    @OneToMany(mappedBy = "user")
+    Set<UserAccess> userAccessSet;
 
     public User(String username, String password, String roles) {
         this.username = username;
         this.password = password;
-        this.roles = roles;
     }
 
-    public User(Long id) {
-        this.id = id;
+    public User(Long user_id) {
+        this.user_id = user_id;
     }
 }

@@ -19,6 +19,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -41,11 +42,11 @@ public class AuthController {
             @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content(schema = @Schema(), mediaType = MediaType.APPLICATION_JSON_VALUE)),
             @ApiResponse(responseCode = "500", description = "Internal Server Error", content = @Content(schema = @Schema(implementation = ErrorResponse.class), mediaType = MediaType.APPLICATION_JSON_VALUE))
     })
-    public ResponseEntity<Map<String, String>> getJwtToken(@RequestBody LoginRequest request) {
+    public ResponseEntity<Map<String, String>> getJwtToken(@Validated(LoginRequest.class) @RequestBody LoginRequest request) {
         var authentication = authManager
-                .authenticate(new UsernamePasswordAuthenticationToken(request.username(), request.password()));
-        return new ResponseEntity<>(Map.of("access_token",
-                tokenService.generateToken((SecurityUser) authentication.getPrincipal())), HttpStatus.OK);
+                .authenticate(new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
+        String accessToken = tokenService.generateToken((SecurityUser) authentication.getPrincipal());
+        return new ResponseEntity<>(Map.of("access_token", accessToken), HttpStatus.OK);
     }
 
     @PostMapping("/signup")
@@ -56,12 +57,11 @@ public class AuthController {
             @ApiResponse(responseCode = "500", description = "Internal Server Error", content = @Content(schema = @Schema(implementation = ErrorResponse.class), mediaType = MediaType.APPLICATION_JSON_VALUE))
     })
     public ResponseEntity<User> createUser(@RequestBody LoginRequest request) throws CustomException {
-        final String username = request.username();
+        final String username = request.getUsername();
         if (userDetailsService.findByUsername(username).isPresent()) {
             throw new CustomException("A user with same username exists", HttpStatus.CONFLICT);
         }
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(userDetailsService.saveUser(username, request.password()));
+        return new ResponseEntity<>(userDetailsService.saveUser(username, request.getPassword()), HttpStatus.CREATED);
     }
 
     @ExceptionHandler(Exception.class)

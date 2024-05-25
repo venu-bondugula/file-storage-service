@@ -1,23 +1,20 @@
 package com.tf.models;
 
 
+import lombok.AllArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 
+@AllArgsConstructor
 public class SecurityUser implements UserDetails {
 
     private final User user;
 
-    public SecurityUser(User user) {
-        this.user = user;
-    }
-
     public String getId() {
-        return String.valueOf(this.user.getId());
+        return String.valueOf(this.user.getUser_id());
     }
 
     @Override
@@ -32,10 +29,7 @@ public class SecurityUser implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Arrays.stream(user.getRoles().split(","))
-                .map(String::trim)
-                .map(SimpleGrantedAuthority::new)
-                .toList();
+        return Collections.emptyList();
     }
 
     @Override

@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface FileChunkMetadataRepository extends JpaRepository<FileChunkMetadata, UUID> {
-    @Query("SELECT fcm FROM file_chunk_metadata fcm WHERE fcm.fileMetadata.fileId = ?1 ORDER BY fcm.sequenceNumber ASC")
+    @Query("SELECT fcm FROM file_chunk_metadata fcm WHERE fcm.fileMetadata.file_id = ?1 ORDER BY fcm.sequenceNumber ASC")
     List<FileChunkMetadata> findAllByFileIDOrderBySequenceNumberAsc(UUID fileMetadataId);
 
 }
